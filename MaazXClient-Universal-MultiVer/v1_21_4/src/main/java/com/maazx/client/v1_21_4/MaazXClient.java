@@ -30,7 +30,7 @@ public final class MaazXClient implements ClientModInitializer {
     private static void renderHud(net.minecraft.client.gui.DrawContext drawContext) {
         MinecraftClient client = MinecraftClient.getInstance();
         if (client.player == null || !config.hudEnabled()) return;
-        int fps = MinecraftClient.getCurrentFps();
+        int fps = client.getCurrentFps();
         var tuning = engine.samplePerformance(fps, System.nanoTime());
         String text = "MX  " + fps + " FPS  |  RD " + tuning.renderDistance() + "  |  E " + tuning.entityDistance();
         drawContext.drawTextWithShadow(client.textRenderer, text,
