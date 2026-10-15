@@ -3,102 +3,94 @@ name: Build and release
 on:
   push:
     branches: [main]
-    tags: ["v*universal*"]
-  pull_request:
   workflow_dispatch:
 
 jobs:
-  clients:
-    name: ${{ matrix.os }} / Minecraft ${{ matrix.target.minecraft }}
+  build-mods:
+    name: Build Fabric jars
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.8"
+      - name: Build Minecraft 1.20.1
+        run: ./gradlew :v1_20_1:build --no-daemon --max-workers=1
+        working-directory: MaazXClient-Universal-MultiVer
+      - name: Build Minecraft 1.20.4
+        run: ./gradlew :v1_20_4:build --no-daemon --max-workers=1
+        working-directory: MaazXClient-Universal-MultiVer
+      - name: Build Minecraft 1.21
+        run: ./gradlew :v1_21:build --no-daemon --max-workers=1
+        working-directory: MaazXClient-Universal-MultiVer
+      - name: Build Minecraft 1.21.1
+        run: ./gradlew :v1_21_1:build --no-daemon --max-workers=1
+        working-directory: MaazXClient-Universal-MultiVer
+      - name: Build Minecraft 1.21.4
+        run: ./gradlew :v1_21_4:build --no-daemon --max-workers=1
+        working-directory: MaazXClient-Universal-MultiVer
+      - name: Build Minecraft 1.21.8
+        run: ./gradlew :v1_21_8:build --no-daemon --max-workers=1
+        working-directory: MaazXClient-Universal-MultiVer
+      - uses: actions/upload-artifact@v4
+        with:
+          name: maazxclient-mod-jars
+          path: MaazXClient-Universal-MultiVer/*/build/libs/maazxclient-*.jar
+          if-no-files-found: error
+
+  build-launcher:
+    name: Build launcher (${{ matrix.os }})
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest, windows-latest]
-        target:
-          - minecraft: "1.20.1"
-            module: v1_20_1
-          - minecraft: "1.20.4"
-            module: v1_20_4
-          - minecraft: "1.21"
-            module: v1_21
-          - minecraft: "1.21.1"
-            module: v1_21_1
-          - minecraft: "1.21.4"
-            module: v1_21_4
-          - minecraft: "1.21.8"
-            module: v1_21_8
+        os: [windows-latest, ubuntu-latest]
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: "8.12"
-      - name: Build version module
-        run: gradle :${{ matrix.target.module }}:build --no-daemon
-      - name: Verify jar contents
-        shell: bash
-        run: |
-          jar_file="${{ matrix.target.module }}/build/libs/maazxclient-${{ matrix.target.minecraft }}-1.0.0.jar"
-          test -f "$jar_file"
-          jar tf "$jar_file" > jar-contents.txt
-          grep -Fx "fabric.mod.json" jar-contents.txt
-          grep -Fx "com/maazx/client/MaazXClientConfig.class" jar-contents.txt
-      - uses: actions/upload-artifact@v4
-        with:
-          name: maazxclient-${{ matrix.target.minecraft }}-${{ matrix.os }}
-          path: ${{ matrix.target.module }}/build/libs/maazxclient-${{ matrix.target.minecraft }}-1.0.0.jar
-
-  package:
-    if: startsWith(github.ref, 'refs/tags/')
-    needs: clients
-    runs-on: windows-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-java@v4
-        with:
-          distribution: temurin
-          java-version: "21"
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: "10.0.x"
-      - uses: gradle/actions/setup-gradle@v4
-        with:
-          gradle-version: "8.12"
-      - uses: actions/download-artifact@v4
-        with:
-          pattern: maazxclient-*-windows-latest
-          path: artifacts
-          merge-multiple: true
-      - name: Stage all version jars
-        shell: pwsh
-        run: |
-          $versions = @('1.20.1','1.20.4','1.21','1.21.1','1.21.4','1.21.8')
-          foreach ($version in $versions) {
-            $module = 'v' + $version.Replace('.', '_')
-            New-Item -ItemType Directory -Force "$module/build/libs" | Out-Null
-            Copy-Item "artifacts/maazxclient-$version-1.0.0.jar" "$module/build/libs/"
-          }
-      - name: Publish launcher
-        run: dotnet publish launcher/MaazXLauncher.csproj --configuration Release --runtime win-x64 --self-contained false --output build/Release
-      - name: Install Inno Setup
-        run: choco install innosetup --no-progress -y
-      - name: Build installer
-        run: iscc installer/setup.iss
+      - name: Publish framework-dependent launcher
+        run: dotnet publish MaazXClient-Universal-MultiVer/launcher/MaazXLauncher.csproj -c Release -o build/Release/ --self-contained false -f net10.0
+      - name: Publish self-contained Windows launcher
+        if: runner.os == 'Windows'
+        run: dotnet publish MaazXClient-Universal-MultiVer/launcher/MaazXLauncher.csproj -c Release -o build/Release/win/ -r win-x64 --self-contained true -p:PublishSingleFile=true
       - uses: actions/upload-artifact@v4
         with:
-          name: maazxclient-release
-          path: |
-            build/Release/**
-            build/installer/MaazXLauncher-Setup.exe
-            artifacts/maazxclient-*-1.0.0.jar
-      - uses: softprops/action-gh-release@v2
+          name: maazxclient-launcher-${{ runner.os }}
+          path: build/Release/
+          if-no-files-found: error
+
+  release:
+    name: Publish GitHub Release
+    needs: [build-mods, build-launcher]
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
         with:
-          name: MaazXClient ${{ github.ref_name }}
+          path: ./dist/
+      - uses: softprops/action-gh-release@v1
+        with:
+          tag_name: v1.0.0-universal-multi
+          name: MaazXClient Universal v1.0.0 - 1.20.1 to 1.21.8 - 60FPS
           files: |
-            build/installer/MaazXLauncher-Setup.exe
-            build/Release/MaazXLauncher.exe
-            artifacts/maazxclient-*-1.0.0.jar
+            dist/**/*.jar
+            dist/**/MaazXLauncher.dll
+            dist/**/MaazXLauncher.exe
+            dist/**/MaazXLauncher.runtimeconfig.json
+            MaazXClient-Universal-MultiVer/assets/icon.png
+          generate_release_notes: true
+          body: |
+            Universal client for Minecraft 1.20.1 to 1.21.8.
+
+            Includes a TUI launcher with a version picker. It installs only the jar matching the selected version, requires an existing Fabric profile, and preserves official launcher profile data. Incompatible third-party mods are not bundled.
+
+            The 60 FPS dynamic system adapts settings under load, with the first entity-distance reduction step set to 16 blocks. Actual FPS depends on hardware, world, and settings; 60 FPS cannot be guaranteed on all systems.
