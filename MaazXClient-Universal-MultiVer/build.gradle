@@ -1,0 +1,12 @@
+plugins {
+    id 'fabric-loom' version '1.10.1' apply false
+}
+
+group = 'com.maazx.client'
+version = '1.0.0'
+
+tasks.register('buildAllClients') {
+    group = 'build'
+    description = 'Build all supported MaazXClient Fabric modules.'
+    dependsOn ':v1_20_1:build', ':v1_20_4:build', ':v1_21:build', ':v1_21_1:build', ':v1_21_4:build', ':v1_21_8:build'
+}

@@ -1,0 +1,4 @@
+ext.mcVersion = '1.21.1'
+ext.yarnMappings = '1.21.1+build.3'
+ext.fabricApiVersion = '0.116.6+1.21.1'
+apply from: rootProject.file('gradle/fabric-module.gradle')

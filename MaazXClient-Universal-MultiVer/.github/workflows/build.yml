@@ -1,0 +1,104 @@
+name: Build and release
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*universal*"]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  clients:
+    name: ${{ matrix.os }} / Minecraft ${{ matrix.target.minecraft }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest]
+        target:
+          - minecraft: "1.20.1"
+            module: v1_20_1
+          - minecraft: "1.20.4"
+            module: v1_20_4
+          - minecraft: "1.21"
+            module: v1_21
+          - minecraft: "1.21.1"
+            module: v1_21_1
+          - minecraft: "1.21.4"
+            module: v1_21_4
+          - minecraft: "1.21.8"
+            module: v1_21_8
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.12"
+      - name: Build version module
+        run: gradle :${{ matrix.target.module }}:build --no-daemon
+      - name: Verify jar contents
+        shell: bash
+        run: |
+          jar_file="${{ matrix.target.module }}/build/libs/maazxclient-${{ matrix.target.minecraft }}-1.0.0.jar"
+          test -f "$jar_file"
+          jar tf "$jar_file" > jar-contents.txt
+          grep -Fx "fabric.mod.json" jar-contents.txt
+          grep -Fx "com/maazx/client/MaazXClientConfig.class" jar-contents.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: maazxclient-${{ matrix.target.minecraft }}-${{ matrix.os }}
+          path: ${{ matrix.target.module }}/build/libs/maazxclient-${{ matrix.target.minecraft }}-1.0.0.jar
+
+  package:
+    if: startsWith(github.ref, 'refs/tags/')
+    needs: clients
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: "10.0.x"
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.12"
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: maazxclient-*-windows-latest
+          path: artifacts
+          merge-multiple: true
+      - name: Stage all version jars
+        shell: pwsh
+        run: |
+          $versions = @('1.20.1','1.20.4','1.21','1.21.1','1.21.4','1.21.8')
+          foreach ($version in $versions) {
+            $module = 'v' + $version.Replace('.', '_')
+            New-Item -ItemType Directory -Force "$module/build/libs" | Out-Null
+            Copy-Item "artifacts/maazxclient-$version-1.0.0.jar" "$module/build/libs/"
+          }
+      - name: Publish launcher
+        run: dotnet publish launcher/MaazXLauncher.csproj --configuration Release --runtime win-x64 --self-contained false --output build/Release
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+      - name: Build installer
+        run: iscc installer/setup.iss
+      - uses: actions/upload-artifact@v4
+        with:
+          name: maazxclient-release
+          path: |
+            build/Release/**
+            build/installer/MaazXLauncher-Setup.exe
+            artifacts/maazxclient-*-1.0.0.jar
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: MaazXClient ${{ github.ref_name }}
+          files: |
+            build/installer/MaazXLauncher-Setup.exe
+            build/Release/MaazXLauncher.exe
+            artifacts/maazxclient-*-1.0.0.jar

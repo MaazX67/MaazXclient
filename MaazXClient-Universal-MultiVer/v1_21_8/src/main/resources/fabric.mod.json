@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 1,
+  "id": "maazxclient",
+  "version": "${version}",
+  "name": "MaazXClient",
+  "description": "MaazXClient universal performance client for Minecraft 1.21.8.",
+  "environment": "client",
+  "entrypoints": { "client": ["com.maazx.client.v1_21_8.MaazXClient"] },
+  "mixins": ["maazxclient.mixins.json"],
+  "depends": { "fabricloader": ">=0.15.0", "minecraft": "1.21.8", "java": ">=21" }
+}

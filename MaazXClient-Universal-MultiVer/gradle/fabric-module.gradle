@@ -1,0 +1,35 @@
+apply plugin: 'fabric-loom'
+evaluationDependsOn(':common')
+
+base {
+    archivesName = "maazxclient-${project.ext.mcVersion}"
+}
+
+version = rootProject.version
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.ext.mcVersion}"
+    mappings "net.fabricmc:yarn:${project.ext.yarnMappings}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${rootProject.fabric_loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.ext.fabricApiVersion}"
+    implementation project(':common')
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.release = 21
+    options.encoding = 'UTF-8'
+}
+
+processResources {
+    inputs.property 'version', project.version
+    filesMatching('fabric.mod.json') {
+        expand 'version': project.version
+    }
+}
+
+jar {
+    from project(':common').sourceSets.main.output
+    from(rootProject.file('LICENSE')) {
+        rename { "${it}_${project.base.archivesName.get()}" }
+    }
+}

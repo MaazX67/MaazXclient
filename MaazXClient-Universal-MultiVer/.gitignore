@@ -1,0 +1,7 @@
+.gradle/
+build/
+*/build/
+*/bin/
+*/obj/
+launcher/publish/
+*.log
