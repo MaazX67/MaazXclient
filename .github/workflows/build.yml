@@ -82,11 +82,12 @@ jobs:
           tag_name: v1.0.0-universal-multi
           name: MaazXClient Universal v1.0.0 - 1.20.1 to 1.21.8 - 60FPS
           files: |
-            dist/**/*.jar
-            dist/**/MaazXLauncher.dll
-            dist/**/MaazXLauncher.exe
-            dist/**/MaazXLauncher.runtimeconfig.json
+            dist/maazxclient-mod-jars/*.jar
+            dist/maazxclient-launcher-Windows/MaazXLauncher.dll
+            dist/maazxclient-launcher-Windows/MaazXLauncher.runtimeconfig.json
+            dist/maazxclient-launcher-Windows/win/MaazXLauncher.exe
             MaazXClient-Universal-MultiVer/assets/icon.png
+          overwrite_files: true
           generate_release_notes: true
           body: |
             Universal client for Minecraft 1.20.1 to 1.21.8.
