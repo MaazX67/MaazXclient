@@ -18,3 +18,14 @@ MaazXClient currently contains no copied source or bundled binaries from the pro
 | FastFurnace | Shadows_of_Fire | MIT | https://github.com/Drullkus/FastFurnace |
 
 The root project license applies only to original MaazXClient files. It does not relicense or incorporate the projects listed above.
+
+## Launcher dependencies
+
+The Windows launcher uses the following MIT-licensed NuGet dependencies for Minecraft installation, Fabric profile setup, and Microsoft account authentication:
+
+| Package | License | Source |
+| --- | --- | --- |
+| CmlLib.Core | MIT | https://github.com/CmlLib/CmlLib.Core |
+| CmlLib.Core.Auth.Microsoft | MIT | https://github.com/CmlLib/CmlLib.Core.Auth.Microsoft |
+
+These libraries are referenced as dependencies, not copied into MaazXClient source. Their package notices and upstream license terms continue to apply.

@@ -14,16 +14,16 @@ Individual modules can be built with `./gradlew :v1_20_1:build`, `:v1_20_4:build
 
 ## Launcher
 
-The lightweight .NET launcher provides Play, Mods, Settings, and About tabs. It detects supported installed game versions and existing Fabric profiles, copies only the selected client jar into a dedicated subfolder of the Minecraft mods directory, writes the selected client settings, selects a named profile in `launcher_profiles.json`, and opens the official launcher. Fabric Loader must already be installed for the selected game version. Set `MC_HOME` to override the detected game directory.
+MaazXLauncher is a Windows WPF desktop app with Play, Instances, Mods, Downloads, and Settings views. It creates isolated game directories, installs supported Minecraft versions and a stable Fabric loader in-app, downloads the matching MaazX jar, signs in through Microsoft's official account flow, and launches the selected profile directly. The mod view can import and enable/disable jar files per instance. Instance removal only unregisters the profile; it does not delete saves or game files.
 
-Build on Windows with `dotnet publish launcher/MaazXLauncher.csproj -c Release -r win-x64 --self-contained false -o build/Release`. A .NET 10 runtime is required. The Inno Setup script packages the launcher and version jars.
+Build on Windows with `dotnet publish launcher/MaazXLauncher.csproj -c Release -r win-x64 --self-contained true -p:PublishSingleFile=true -o build/Release`. CI publishes the desktop launcher and packages all supported jars into `MaazXLauncher-Setup.exe` with Inno Setup. The launcher uses CmlLib.Core and CmlLib.Core.Auth.Microsoft (MIT) for Mojang/Fabric installation and Microsoft authentication. Set the Minecraft directory in Settings to control the parent directory for managed instances.
 
 ## Included behavior
 
 - Version-independent Java utilities for config persistence, frame-rate-based quality recommendations, entity/frustum distance tests, greedy 2D rectangle merging, bounded light/biome caches, async worker pools, particle limits, state interning, and UI command batching.
 - Version-specific Fabric client initialization and a compact FPS/render-distance/entity-distance HUD.
-- The launcher manages installed Fabric profiles and third-party jar enable/disable state.
-- CI builds and inspects each version jar on Linux and Windows, and packages a Windows installer for tagged releases.
+- The launcher manages version downloads, Fabric installation, Microsoft sign-in, instance directories, and third-party jar enable/disable state.
+- CI builds all version jars sequentially, publishes Windows/Linux launcher artifacts, packages a Windows installer, and updates the universal GitHub Release.
 
 ## Performance scope
 

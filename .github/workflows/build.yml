@@ -17,7 +17,7 @@ jobs:
           java-version: "21"
       - uses: gradle/actions/setup-gradle@v4
         with:
-          gradle-version: "8.8"
+          gradle-version: "8.12"
       - name: Build Minecraft 1.20.1
         run: ./gradlew :v1_20_1:build --no-daemon --max-workers=1
         working-directory: MaazXClient-Universal-MultiVer
@@ -55,7 +55,7 @@ jobs:
         with:
           dotnet-version: "10.0.x"
       - name: Publish framework-dependent launcher
-        run: dotnet publish MaazXClient-Universal-MultiVer/launcher/MaazXLauncher.csproj -c Release -o build/Release/ --self-contained false -f net10.0
+        run: dotnet publish MaazXClient-Universal-MultiVer/launcher/MaazXLauncher.csproj -c Release -o build/Release/ --self-contained false -f net10.0-windows
       - name: Publish self-contained Windows launcher
         if: runner.os == 'Windows'
         run: dotnet publish MaazXClient-Universal-MultiVer/launcher/MaazXLauncher.csproj -c Release -o build/Release/win/ -r win-x64 --self-contained true -p:PublishSingleFile=true
@@ -65,9 +65,43 @@ jobs:
           path: build/Release/
           if-no-files-found: error
 
+  build-installer:
+    name: Build Windows installer
+    needs: [build-mods, build-launcher]
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+      - name: Stage launcher and version jars
+        shell: pwsh
+        run: |
+          $project = 'MaazXClient-Universal-MultiVer'
+          New-Item -ItemType Directory -Force "$project/build/Release" | Out-Null
+          Copy-Item 'artifacts/maazxclient-launcher-Windows/*' "$project/build/Release/" -Recurse -Force
+          $versions = @('1.20.1','1.20.4','1.21','1.21.1','1.21.4','1.21.8')
+          foreach ($version in $versions) {
+            $module = 'v' + $version.Replace('.', '_')
+            $jar = Get-ChildItem 'artifacts/maazxclient-mod-jars' -Recurse -Filter "maazxclient-$version-1.0.0.jar" | Select-Object -First 1
+            if ($null -eq $jar) { throw "Missing MaazXClient jar for Minecraft $version" }
+            New-Item -ItemType Directory -Force "$project/$module/build/libs" | Out-Null
+            Copy-Item $jar.FullName "$project/$module/build/libs/"
+          }
+      - name: Install Inno Setup
+        run: choco install innosetup --no-progress -y
+      - name: Build installer
+        shell: pwsh
+        run: '& "C:\Program Files (x86)\Inno Setup 6\ISCC.exe" "MaazXClient-Universal-MultiVer/installer/setup.iss"'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: maazxclient-installer
+          path: MaazXClient-Universal-MultiVer/build/installer/MaazXLauncher-Setup.exe
+          if-no-files-found: error
+
   release:
     name: Publish GitHub Release
-    needs: [build-mods, build-launcher]
+    needs: [build-mods, build-launcher, build-installer]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     permissions:
@@ -86,11 +120,12 @@ jobs:
             dist/maazxclient-launcher-Windows/MaazXLauncher.dll
             dist/maazxclient-launcher-Windows/MaazXLauncher.runtimeconfig.json
             dist/maazxclient-launcher-Windows/win/MaazXLauncher.exe
+            dist/maazxclient-installer/MaazXLauncher-Setup.exe
             MaazXClient-Universal-MultiVer/assets/icon.png
           generate_release_notes: true
           body: |
             Universal client for Minecraft 1.20.1 to 1.21.8.
 
-            Includes a TUI launcher with a version picker. It installs only the jar matching the selected version, requires an existing Fabric profile, and preserves official launcher profile data. Incompatible third-party mods are not bundled.
+            Includes the MaazX desktop launcher with version and instance management, mod toggles, in-app Minecraft/Fabric installation, and Microsoft sign-in. Incompatible third-party mods are not bundled.
 
             The 60 FPS dynamic system adapts settings under load, with the first entity-distance reduction step set to 16 blocks. Actual FPS depends on hardware, world, and settings; 60 FPS cannot be guaranteed on all systems.

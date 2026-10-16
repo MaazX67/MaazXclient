@@ -5,6 +5,7 @@
 AppId={{B06F4CF6-F6A2-46DA-B851-0FA3750CFF38}
 AppName={#ProductName}
 AppVersion={#ProductVersion}
+LicenseFile=..\LICENSE
 DefaultDirName={autopf}\MaazX
 DefaultGroupName=MaazXClient
 OutputDir=..\build\installer
@@ -19,6 +20,7 @@ Name: "desktopicon"; Description: "Create a desktop shortcut"; GroupDescription:
 
 [Files]
 Source: "..\build\Release\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
+Source: "..\build\Release\win\MaazXLauncher.exe"; DestDir: "{app}"; DestName: "MaazXLauncher.exe"; Flags: ignoreversion
 Source: "..\assets\icon.png"; DestDir: "{app}\assets"; Flags: ignoreversion
 Source: "..\v1_20_1\build\libs\maazxclient-1.20.1-1.0.0.jar"; DestDir: "{app}\mods"; Flags: ignoreversion
 Source: "..\v1_20_4\build\libs\maazxclient-1.20.4-1.0.0.jar"; DestDir: "{app}\mods"; Flags: ignoreversion
