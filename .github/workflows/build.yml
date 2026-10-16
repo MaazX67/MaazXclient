@@ -87,7 +87,6 @@ jobs:
             dist/maazxclient-launcher-Windows/MaazXLauncher.runtimeconfig.json
             dist/maazxclient-launcher-Windows/win/MaazXLauncher.exe
             MaazXClient-Universal-MultiVer/assets/icon.png
-          overwrite_files: true
           generate_release_notes: true
           body: |
             Universal client for Minecraft 1.20.1 to 1.21.8.
